@@ -25,7 +25,7 @@ Un serveur [Model Context Protocol (MCP)](https://modelcontextprotocol.io) qui f
 
 ### 1. Cloner le projet
 ```bash
-git clone <votre-repo-url>
+git clone https://github.com/joelgombin/mcp-wikidata.git
 cd mcp-wikidata
 ```
 
