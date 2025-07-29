@@ -27,9 +27,21 @@ class WikidataClient:
 
     async def _make_request(self, url: str, params: Dict[str, Any]) -> Dict[str, Any]:
         async with self._rate_limiter:
-            response = await self.session.get(url, params=params)
-            response.raise_for_status()
-            return response.json()
+            try:
+                response = await self.session.get(url, params=params)
+                response.raise_for_status()
+                return response.json()
+            except httpx.TimeoutException:
+                raise Exception(f"Request timed out after {self.config.timeout} seconds")
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 429:
+                    raise Exception("Wikidata API is rate limiting requests. Please wait and try again.")
+                elif e.response.status_code >= 500:
+                    raise Exception(f"Wikidata server error ({e.response.status_code}). Please try again later.")
+                else:
+                    raise Exception(f"Wikidata API error {e.response.status_code}: {e.response.text[:200]}")
+            except httpx.ConnectError:
+                raise Exception(f"Cannot connect to Wikidata API. Check your internet connection.")
 
     async def search_entities(
         self, 
@@ -144,20 +156,39 @@ class WikidataClient:
             "format": format
         }
 
-        response = await self.session.get(
-            self.config.sparql_endpoint,
-            params=params,
-            headers={
-                "Accept": f"application/sparql-results+{format}",
-                "User-Agent": self.config.user_agent
-            }
-        )
-        response.raise_for_status()
+        try:
+            response = await self.session.get(
+                self.config.sparql_endpoint,
+                params=params,
+                headers={
+                    "Accept": f"application/sparql-results+{format}",
+                    "User-Agent": self.config.user_agent
+                }
+            )
+            response.raise_for_status()
 
-        if format == "json":
-            return response.json()
-        else:
-            return {"result": response.text}
+            if format == "json":
+                return response.json()
+            else:
+                return {"result": response.text}
+                
+        except asyncio.TimeoutError:
+            raise Exception(f"SPARQL query timed out after {self.config.timeout} seconds. Try simplifying your query or increasing the timeout.")
+        except httpx.TimeoutException:
+            raise Exception(f"SPARQL query timed out after {self.config.timeout} seconds. Try simplifying your query or increasing the timeout.")
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 500:
+                raise Exception(f"SPARQL server error (500). Your query may have syntax errors or be too complex: {query[:100]}...")
+            elif e.response.status_code == 429:
+                raise Exception("SPARQL service is rate limiting requests. Please wait and try again.")
+            else:
+                raise Exception(f"SPARQL HTTP error {e.response.status_code}: {e.response.text[:200]}")
+        except httpx.ConnectError:
+            raise Exception(f"Cannot connect to SPARQL endpoint {self.config.sparql_endpoint}. Check your internet connection.")
+        except Exception as e:
+            if "timeout" in str(e).lower():
+                raise Exception(f"SPARQL query timed out after {self.config.timeout} seconds. Try simplifying your query or increasing the timeout.")
+            raise Exception(f"SPARQL query failed: {str(e)}")
 
     async def get_relations(
         self,

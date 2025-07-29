@@ -185,9 +185,13 @@ class WikidataTools:
             ]
 
         except Exception as e:
+            error_msg = str(e)
+            if not error_msg.strip():
+                error_msg = f"Unknown error occurred while executing {name}"
+            
             return [
                 TextContent(
                     type="text",
-                    text=f"Error executing {name}: {str(e)}"
+                    text=f"Error executing {name}: {error_msg}"
                 )
             ]
