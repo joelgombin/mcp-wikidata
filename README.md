@@ -2,6 +2,10 @@
 
 Un serveur [Model Context Protocol (MCP)](https://modelcontextprotocol.io) qui fournit un accès aux données Wikidata pour les Large Language Models.
 
+<a href="https://glama.ai/mcp/servers/@joelgombin/mcp-wikidata">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@joelgombin/mcp-wikidata/badge" alt="Wikidata Server MCP server" />
+</a>
+
 ## 🔧 Fonctionnalités
 
 - **5 outils MCP** pour interagir avec Wikidata :
